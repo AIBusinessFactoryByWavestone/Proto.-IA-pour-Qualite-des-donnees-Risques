@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Démonstrateur – IA & qualité des données de notation</title>
+<style>
+:root{
+  --navy:#0f2747; --blue:#1f5fbf; --blue-l:#e8f0fc; --red:#d62828; --red-l:#fdecec;
+  --orange:#e07a00; --orange-l:#fff3e2; --green:#1a8a4a; --green-l:#e6f5ec; --grey:#5b6573;
+  --line:#dfe4ec; --bg:#f4f6fa; --violet:#6b3fd1; --violet-l:#f0eafd;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",Arial,sans-serif;background:var(--bg);color:#1c2430;font-size:14px}
+.top{position:sticky;top:0;z-index:20}
+header{background:var(--navy);color:#fff;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header .logo{font-weight:700;font-size:18px;letter-spacing:.3px}
+.hright{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header .user{font-size:13px;opacity:.9;display:flex;align-items:center;gap:8px}
+header .avatar{width:30px;height:30px;border-radius:50%;background:#7fb2ff;color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:700}
+.dashbtn{border:0;background:#ffd166;color:var(--navy);font-weight:700;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px}
+.dashbtn:disabled{background:#3a5274;color:#9fb0c8;cursor:not-allowed}
+.dashbtn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.dashbtn.pulse{animation:dpulse 1.2s ease-in-out 6}
+@keyframes dpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,209,102,.9)}50%{box-shadow:0 0 0 12px rgba(255,209,102,0)}}
+
+.ctrl{background:#fff;border-bottom:1px solid var(--line);padding:10px 24px;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+.ctrl-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mode{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.mode button{border:0;background:#fff;padding:8px 14px;cursor:pointer;font-size:13px;color:var(--grey)}
+.mode button.on{background:var(--blue);color:#fff;font-weight:600}
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy)}
+.btn:hover:not(:disabled){background:var(--blue-l)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn.primary:hover{background:#174c99}
+.btn:focus-visible,.mode button:focus-visible,.dot:focus-visible,tr.click:focus-visible{outline:3px solid #7fb2ff;outline-offset:2px}
+.steplabel{margin-left:auto;font-weight:600;color:var(--navy)}
+.dots{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.dot{flex:1;min-width:80px;border:0;background:#e9edf3;border-radius:6px;padding:6px 4px;font-size:11px;color:var(--grey);cursor:pointer;text-align:center;position:relative;overflow:hidden}
+.dot.done{background:#cfe0fa;color:var(--navy)}
+.dot.cur{background:var(--blue);color:#fff;font-weight:700}
+.dot .fill{position:absolute;left:0;bottom:0;height:3px;background:#ffd166;width:0}
+
+main{display:grid;grid-template-columns:340px 1fr;gap:18px;padding:18px 24px;max-width:1400px;margin:0 auto}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+
+.comment{background:#fff;border-radius:12px;padding:18px;border:3px solid transparent;position:sticky;top:175px;align-self:start}
+@media(max-width:900px){.comment{position:static}}
+.comment .tag{display:inline-block;background:var(--red);color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;letter-spacing:.5px}
+.comment h2{margin:10px 0 8px;font-size:18px;color:var(--navy)}
+.comment p{margin:0 0 10px;line-height:1.55}
+.comment .key{background:var(--blue-l);border-left:4px solid var(--blue);padding:10px 12px;border-radius:6px;font-weight:600;color:var(--navy);line-height:1.45}
+.comment.flash{animation:frame 1.1s ease-in-out 4;border-color:var(--red)}
+.comment.hold{border-color:var(--red);box-shadow:0 0 0 4px rgba(214,40,40,.12)}
+@keyframes frame{0%{border-color:var(--red);box-shadow:0 0 0 0 rgba(214,40,40,.55)}50%{border-color:var(--red);box-shadow:0 0 0 12px rgba(214,40,40,0)}100%{border-color:var(--red);box-shadow:0 0 0 0 rgba(214,40,40,0)}}
+.readme{display:flex;align-items:center;gap:6px;color:var(--red);font-weight:700;font-size:12px;margin-bottom:6px}
+.readme .arrow{animation:nudge 1s infinite}
+@keyframes nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}
+
+.stage{background:#fff;border-radius:12px;padding:20px;min-height:540px;border:1px solid var(--line);min-width:0}
+.stage h3{margin:0 0 4px;color:var(--navy);font-size:17px}
+.sub{color:var(--grey);margin:0 0 16px;font-size:13px}
+.fade{animation:fadein .6s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.hidden{opacity:0;transform:translateY(8px);transition:all .7s ease}
+.show{opacity:1;transform:none}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.card{border:1px solid var(--line);border-radius:10px;padding:14px;background:#fff}
+.card .big{font-size:26px;font-weight:700;color:var(--navy)}
+.card .lbl{color:var(--grey);font-size:12px}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+.p-red{background:var(--red-l);color:var(--red)} .p-or{background:var(--orange-l);color:var(--orange)}
+.p-gr{background:var(--green-l);color:var(--green)} .p-bl{background:var(--blue-l);color:var(--blue)}
+.p-vi{background:var(--violet-l);color:var(--violet)} .p-grey{background:#eef0f3;color:var(--grey)}
+.p-ye{background:#fff0b3;color:#8a6a00}
+
+.drop{border:2px dashed #9fb6d8;border-radius:12px;padding:30px;text-align:center;background:#f8fbff;transition:all .4s}
+.drop.active{border-color:var(--blue);background:var(--blue-l)}
+.file{display:inline-flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 14px;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.file .ic{width:34px;height:40px;background:var(--green);color:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.bar{height:10px;background:#e9edf3;border-radius:6px;overflow:hidden;margin-top:6px}
+.bar>div{height:100%;width:0;background:var(--blue);transition:width 2.4s ease}
+.cursor{display:inline-block;font-size:26px;transition:transform 2s ease}
+
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:12.5px;min-width:900px}
+th{background:#f1f4f9;text-align:left;padding:8px;color:var(--navy);font-weight:600;white-space:nowrap}
+td{padding:7px 8px;border-top:1px solid var(--line);white-space:nowrap}
+tr.anom td{background:var(--red-l)} tr.fp td{background:var(--orange-l)} tr.base td{background:#fff7d6}
+tr.click{cursor:pointer}
+tr.click:hover td{filter:brightness(.94)}
+tr.click td:last-child::after{content:"  ➜ Ouvrir";color:var(--blue);font-weight:700;font-size:11px}
+tr.pulse td{animation:rowpulse 1.4s ease-in-out 3}
+@keyframes rowpulse{50%{box-shadow:inset 0 0 0 2px var(--red)}}
+td.hl{font-weight:700;color:var(--red)}
+.mono{font-family:Consolas,monospace}
+.empty{color:var(--red);font-style:italic}
+
+.sec{font-size:12px;font-weight:700;color:var(--grey);letter-spacing:.5px;text-transform:uppercase;margin:16px 0 8px}
+.mods{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.mod{border:1px solid var(--line);border-radius:10px;padding:14px}
+.mod.ai{border-color:#d8cbf7;background:#fbf9ff}
+.mod h4{margin:0 0 4px;font-size:14px;color:var(--navy)}
+.mod p{margin:0 0 8px;font-size:12px;color:var(--grey);line-height:1.4}
+.mod .st{font-size:12px;font-weight:600;margin-top:6px}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:1000px){.grid2{grid-template-columns:1fr}}
+.alert{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:10px;padding:12px 14px;margin-bottom:12px;background:#fff}
+.alert.or{border-left-color:var(--orange)} .alert.ye{border-left-color:#d4a200}
+.alert .t{font-weight:700;color:var(--navy)}
+.alert .m{color:var(--grey);font-size:12px;margin-top:3px}
+.box{border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+.box h4{margin:0 0 10px;color:var(--navy);font-size:14px}
+.conf{display:flex;align-items:center;gap:10px;margin:6px 0 10px}
+.conf .bar{flex:1;margin:0}
+.conf .bar>div{background:var(--green)}
+.conf .bar.low>div{background:#9aa5b4}
+.conf b{min-width:42px;text-align:right}
+.evid{margin:0;padding-left:18px}
+.evid li{margin-bottom:6px;line-height:1.4}
+.aibox{background:var(--violet-l);border:1px solid #d8cbf7;border-radius:10px;padding:12px 14px;line-height:1.5;margin-bottom:12px}
+.aibox .who{font-size:11px;font-weight:700;color:var(--violet);margin-bottom:4px}
+
+.rem{display:flex;gap:12px;border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;align-items:flex-start}
+.rem .n{width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.rem .d{flex:1}
+.rem .d b{color:var(--navy)}
+.rem .meta{font-size:12px;color:var(--grey);margin-top:4px}
+.actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.mini{font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid var(--line);background:#fff;cursor:pointer}
+.mini.ok{background:var(--green);color:#fff;border-color:var(--green)}
+.mini.ko{background:#eef0f3;color:var(--grey)}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:12px}
+.kpi .v{font-size:24px;font-weight:700;color:var(--navy)}
+.kpi .l{font-size:12px;color:var(--grey)}
+.kpi .d{font-size:11px;margin-top:3px;color:var(--grey)}
+.hb{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:12px}
+.hb span:first-child{width:200px;color:#333}
+.hb .track{flex:1;background:#eef0f3;border-radius:5px;height:16px;overflow:hidden}
+.hb .track div{height:100%;width:0;transition:width 1.8s ease}
+.hb b{width:34px;text-align:right}
+.gauge{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.ring{width:110px;height:110px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ring div{width:84px;height:84px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring b{font-size:24px;color:var(--navy)} .ring small{font-size:10px;color:var(--grey)}
+.dim{display:grid;grid-template-columns:1fr auto auto;gap:6px 10px;font-size:12.5px;align-items:center}
+.insight{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13px;line-height:1.45}
+.insight:first-of-type{border-top:0}
+
+.gain{display:grid;grid-template-columns:1.3fr 1fr 1fr .7fr;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13px}
+.gain div{padding:9px 10px;border-top:1px solid var(--line)}
+.gain .h{background:#f1f4f9;font-weight:700;color:var(--navy);border-top:0}
+.gain .g{color:var(--green);font-weight:700}
+@media(max-width:700px){.gain{font-size:11px}}
+.barcmp{display:flex;align-items:center;gap:10px;margin:8px 0}
+.barcmp span{width:130px;font-size:12px;color:var(--grey)}
+.barcmp .track{flex:1;background:#eef0f3;border-radius:6px;height:22px;overflow:hidden}
+.barcmp .track div{height:100%;width:0;transition:width 2s ease;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;padding-left:8px;white-space:nowrap}
+.note{font-size:11.5px;color:var(--grey);margin-top:10px;font-style:italic}
+.hint{display:inline-flex;align-items:center;gap:8px;background:var(--blue-l);color:var(--navy);border-radius:8px;padding:8px 12px;font-weight:600;font-size:13px;margin-bottom:12px}
+
+.ov{position:fixed;inset:0;background:rgba(15,39,71,.55);z-index:50;display:none;align-items:flex-start;justify-content:center;padding:30px 14px;overflow-y:auto}
+.ov.open{display:flex}
+.modal{background:#fff;border-radius:14px;max-width:1040px;width:100%;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.3);animation:fadein .35s ease}
+.mhead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:14px}
+.mhead h3{margin:0 0 6px;color:var(--navy)}
+.x{border:0;background:#eef0f3;border-radius:8px;width:34px;height:34px;font-size:18px;cursor:pointer;flex-shrink:0}
+.x:focus-visible{outline:3px solid #7fb2ff}
+.autotag{display:inline-block;background:#ffd166;color:var(--navy);font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;margin-bottom:10px}
+footer{text-align:center;color:var(--grey);font-size:11px;padding:10px 0 20px}
+</style>
+</head>
+<body>
+
+<div class="top">
+<header>
+  <div class="logo">Contrôle qualité des données de notation · Prototype personnalisable</div>
+  <div class="hright">
+    <button type="button" class="dashbtn" id="dashBtn" disabled title="Disponible après l’analyse">📊 Rapport des anomalies</button>
+    <div class="user"><div class="avatar">CA</div>Camille ANTOINE – Analyste qualité des données Risques</div>
+  </div>
+</header>
+<div class="ctrl" role="region" aria-label="Navigation du démonstrateur">
+  <div class="ctrl-row">
+    <div class="mode" role="group" aria-label="Mode de lecture">
+      <button type="button" id="mAuto">▶ Lecture auto</button>
+      <button type="button" id="mStep" class="on">⏭ Étape par étape</button>
+    </div>
+    <button type="button" class="btn" id="bPause" style="display:none">⏸ Pause</button>
+    <button type="button" class="btn" id="bPrev">◀ Précédent</button>
+    <button type="button" class="btn primary" id="bNext">Suivant ▶</button>
+    <button type="button" class="btn" id="bRestart">↺ Recommencer</button>
+    <div class="steplabel" id="stepLabel" aria-live="polite"></div>
+  </div>
+  <div class="dots" id="dots"></div>
+</div>
+</div>
+
+<main>
+  <aside class="comment" id="comment" aria-live="polite">
+    <div class="readme"><span>À LIRE</span><span class="arrow">➜</span><span>Ce qui se passe à cette étape</span></div>
+    <span class="tag" id="cTag"></span>
+    <h2 id="cTitle"></h2>
+    <div id="cBody"></div>
+  </aside>
+  <section class="stage" id="stage"></section>
+</main>
+
+<div class="ov" id="ov" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="modal" id="modal"></div>
+</div>
+
+<footer>Démonstrateur illustratif – données entièrement fictives. Les hypothèses de gains sont indicatives et seront mesurées pendant le POC.</footer>
+
+<script>
+(function(){
+const stage=document.getElementById('stage');
+const comment=document.getElementById('comment');
+const ov=document.getElementById('ov'),modal=document.getElementById('modal');
+const dashBtn=document.getElementById('dashBtn');
+let timers=[]; function later(fn,ms){timers.push(setTimeout(fn,ms));}
+function clearTimers(){timers.forEach(clearTimeout);timers=[];}
+function reveal(sel,ms){later(()=>{stage.querySelectorAll(sel).forEach(e=>e.classList.add('show'));},ms);}
+
+/* ---------- Données fictives ---------- */
+const rows=[
+ {id:'CPT-10231',nom:'Atelier Morvan SAS',seg:'PME',ca:'12,4 M€',n1:'B+',note:'B+',pd:'0,85 %',mod:'PME-v3',date:'30/09/2026',src:'B+'},
+ {id:'CPT-10232',nom:'Groupe Valtéra',seg:'PME',ca:'860,0 M€',n1:'A-',note:'A-',pd:'0,32 %',mod:'PME-v3',date:'30/09/2026',src:'A-',a:'seg'},
+ {id:'CPT-10233',nom:'Logistique Rhône Est',seg:'Corporate',ca:'240,0 M€',n1:'A',note:'A',pd:'4,80 %',mod:'CORP-v2',date:'30/09/2026',src:'A',a:'pd'},
+ {id:'CPT-10234',nom:'Brasserie du Port',seg:'PME',ca:'6,1 M€',n1:'A-',note:'D',pd:'0,30 %',mod:'PME-v3',date:'30/09/2026',src:'A-',a:'map'},
+ {id:'CPT-10235',nom:'Menuiserie Ollier',seg:'PME',ca:'3,8 M€',n1:'B',note:'B',pd:'1,10 %',mod:'PME-v3',date:'30/09/2026',src:'B'},
+ {id:'CPT-10236',nom:'Holding Kerval',seg:'Corporate',ca:'1 250,0 M€',n1:'A+',note:'A+',pd:'0,12 %',mod:'CORP-v3',date:'30/09/2026',src:'A+'},
+ {id:'CPT-10237',nom:'Transports Daguin',seg:'PME',ca:'18,9 M€',n1:'B',note:'C-',pd:'6,90 %',mod:'PME-v3',date:'30/09/2026',src:'C-',a:'fp'},
+ {id:'CPT-10238',nom:'Clinique des Tilleuls',seg:'PME',ca:'22,0 M€',n1:'B+',note:'B+',pd:'0,90 %',mod:'PME-v3',date:'30/09/2026',src:'B+'},
+ {id:'CPT-10239',nom:'Optique Lambert',seg:'PME',ca:'2,2 M€',n1:'B-',note:'B-',pd:'1,95 %',mod:'PME-v3',date:'',src:'B-',a:'date'},
+ {id:'CPT-10240',nom:'Énergies Sud Atlantique',seg:'Corporate',ca:'410,0 M€',n1:'A-',note:'A-',pd:'0,35 %',mod:'CORP-v2',date:'30/09/2026',src:'A-',a:'mod'}
+];
+const RES={
+ seg:{cls:'anom',pill:'<span class="pill p-red">Segmentation incohérente</span>',hl:['seg','ca']},
+ pd:{cls:'anom',pill:'<span class="pill p-red">Note / probabilité de défaut incohérentes</span>',hl:['note','pd','mod']},
+ map:{cls:'anom',pill:'<span class="pill p-red">Écart inter-applicatif</span>',hl:['note','src']},
+ mod:{cls:'anom',pill:'<span class="pill p-red">Modèle obsolète</span>',hl:['mod']},
+ fp:{cls:'fp',pill:'<span class="pill p-or">Faux positif probable</span>',hl:['note']},
+ date:{cls:'base',pill:'<span class="pill p-ye">Contrôle de base : date manquante</span>',hl:['date']}
+};
+
+const DET={
+ seg:{titre:'Contrepartie classée PME avec un chiffre d’affaires de grand groupe',sev:'Moyenne',sevc:'p-or',famille:'Comparaison avec des profils similaires',
+  constat:'Groupe Valtéra est classé PME avec un chiffre d’affaires de 860 M€, soit 17 fois le seuil de 50 M€ retenu pour le segment PME.',
+  preuves:['Chiffre d’affaires en hausse de +540 % depuis le dernier arrêté (fusion en mai 2026).','Le profil ressemble à 96 % aux contreparties Corporate du portefeuille.','Le modèle de notation appliqué (PME-v3) n’est pas adapté à cette taille d’entreprise.','7 autres contreparties présentent le même décalage segment / chiffre d’affaires.'],
+  causes:[['Segment non revu après une forte croissance (fusion)',82],['Erreur de saisie du chiffre d’affaires',14],['Règle de segmentation mal paramétrée',4]],
+  ia:'Le segment PME a été attribué avant la fusion de mai 2026 et n’a pas été mis à jour. La contrepartie est donc notée avec un modèle PME alors que son profil relève du segment Corporate. Le même cas touche 8 contreparties.',
+  rem:[['Reclasser la contrepartie en segment Corporate','Équipe gestion des référentiels clients','Traite 8 anomalies'],['Renoter avec le modèle Corporate (CORP-v3)','Équipe notation','Note et probabilité de défaut alignées sur le bon modèle'],['Ajouter un contrôle permanent « cohérence segment / chiffre d’affaires »','Équipe qualité des données','Évite la récidive']]},
+ pd:{titre:'Note interne A incohérente avec une probabilité de défaut de 4,80 %',sev:'Élevée',sevc:'p-red',famille:'Cohérence entre champs',
+  constat:'Pour une note A, la probabilité de défaut attendue se situe entre 0,15 % et 0,40 %. L’écart est de plus de 10 fois.',
+  preuves:['La note A provient du modèle CORP-v3 (application source), la probabilité de défaut du modèle CORP-v2.','CORP-v2 est remplacé depuis le 01/07/2026.','23 autres contreparties présentent le même schéma (modèle CORP-v2 après juillet).','Aucun événement de crédit enregistré sur la contrepartie.'],
+  causes:[['Probabilité de défaut calculée avec un modèle obsolète (CORP-v2)',87],['Erreur de saisie manuelle de la probabilité de défaut',9],['Dégradation réelle non encore reflétée dans la note',4]],
+  ia:'La note A est cohérente avec les données financières, mais la probabilité de défaut a été produite par le modèle CORP-v2, désactivé en juillet 2026. Le même écart touche 24 contreparties Corporate : il s’agit très probablement d’un paramétrage du flux de calcul qui pointe encore vers l’ancien modèle.',
+  rem:[['Corriger le paramétrage du flux de calcul de la probabilité de défaut pour pointer vers CORP-v3','Équipe applicative notation · correction à la source','Traite 24 anomalies'],['Recalculer la probabilité de défaut des 24 contreparties et republier l’arrêté','Équipe production Risques','Probabilités de défaut alignées sur les notes'],['Ajouter un contrôle permanent « cohérence modèle de note / modèle de probabilité de défaut »','Équipe qualité des données','Évite la récidive']]},
+ map:{titre:'Note D dans l’application, A- dans l’application source',sev:'Élevée',sevc:'p-red',famille:'Rapprochement inter-applicatif',
+  constat:'La note interne (D, défaut) diffère de la note de l’application source (A-). La probabilité de défaut de 0,30 % est cohérente avec A-, pas avec D.',
+  preuves:['La table de correspondance des notes a été modifiée le 15/09/2026.','Depuis cette date, les notes A- de 9 contreparties sont transformées en D.','Aucun impayé ni événement de défaut sur la contrepartie.','Note N-1 : A-, aucune revue de notation enregistrée.'],
+  causes:[['Table de correspondance des notes erronée dans le flux d’alimentation',89],['Mise en défaut manuelle non tracée',8],['Décalage de date d’arrêté entre applications',3]],
+  ia:'L’écart vient de la transcodification des notes entre l’application source et l’application de notation. Depuis la mise à jour du 15/09/2026, la valeur A- est associée par erreur à D. Cette erreur fait apparaître à tort 9 contreparties en défaut, ce qui a un impact direct sur les calculs de risque.',
+  rem:[['Corriger la ligne A- de la table de correspondance des notes','Équipe applicative intégration · correction à la source','Traite 9 anomalies'],['Rejouer le flux d’alimentation pour les 9 contreparties','Équipe production Risques','Notes rétablies'],['Mettre en place un rapprochement automatique des notes entre applications','Équipe qualité des données','Détection immédiate des écarts']]},
+ mod:{titre:'Contrepartie notée avec un modèle désactivé (CORP-v2)',sev:'Moyenne',sevc:'p-or',famille:'Cohérence entre champs',
+  constat:'La note et la probabilité de défaut sont cohérentes entre elles, mais elles ont été calculées avec le modèle CORP-v2, remplacé depuis le 01/07/2026.',
+  preuves:['Date de notation (30/09/2026) postérieure à la désactivation de CORP-v2.','Même schéma que l’alerte CPT-10233 : 24 contreparties concernées au total.','Écart de probabilité de défaut estimé avec CORP-v3 : faible (≈ +0,05 pt).'],
+  causes:[['Probabilité de défaut calculée avec un modèle obsolète (CORP-v2)',85],['Dérogation métier non documentée',11],['Erreur de référentiel des modèles',4]],
+  ia:'Cette anomalie a la même cause racine que l’alerte CPT-10233 : le flux de calcul utilise encore CORP-v2. L’impact sur la note est faible ici, mais la correction à la source traitera les deux cas en même temps.',
+  rem:[['Rattacher l’anomalie à la correction du flux de calcul (alerte CPT-10233)','Équipe applicative notation','Pas d’action supplémentaire'],['Recalculer la probabilité de défaut avec CORP-v3','Équipe production Risques','Écart attendu faible']]},
+ fp:{titre:'Dégradation de 4 crans en un trimestre (B → C-)',sev:'Faux positif probable',sevc:'p-or',famille:'Évolution dans le temps',fp:true,
+  constat:'Variation inhabituelle par rapport aux contreparties similaires, qui justifierait normalement une analyse manuelle.',
+  preuves:['3 impayés enregistrés entre juillet et septembre 2026.','Revue de notation documentée le 12/09/2026.','Probabilité de défaut de 6,90 %, cohérente avec une note C-.','Note identique dans l’application source.'],
+  causes:[['Variation justifiée par la situation de la contrepartie : faux positif',91],['Erreur de notation',6],['Erreur d’alimentation',3]],
+  ia:'La dégradation est réelle et documentée : les impayés et la revue de notation du 12/09/2026 l’expliquent. Toutes les données sont cohérentes entre elles et avec l’application source. Je propose de clôturer l’alerte sans action, en conservant cette justification pour l’audit.',
+  rem:[['Clôturer l’alerte en faux positif avec la justification générée','Collaborateur qualité des données','Aucune analyse manuelle supplémentaire']]},
+ date:{titre:'Date de notation manquante',sev:'Faible',sevc:'p-grey',famille:'Contrôle de base (présence)',
+  constat:'Le champ obligatoire « date de notation » est vide. Ce cas est détecté par les contrôles de base, mais l’IA aide à en trouver l’origine.',
+  preuves:['18 contreparties ont une date de notation vide sur cet arrêté.','Toutes proviennent du même lot d’extraction du 29/09/2026 (agence Ouest).','La date est bien renseignée dans l’application source.'],
+  causes:[['Extraction incomplète du lot du 29/09/2026',78],['Notation non finalisée (dossiers en cours)',17],['Saisie manuelle oubliée',5]],
+  ia:'Les 18 dates manquantes proviennent toutes du même lot d’extraction, alors qu’elles existent dans l’application source. Il s’agit très probablement d’un incident technique d’extraction plutôt que de 18 oublis de saisie.',
+  rem:[['Relancer l’extraction du lot du 29/09/2026','Équipe production Risques','Traite 18 anomalies'],['Ajouter un contrôle de complétude par lot d’extraction','Équipe qualité des données','Détection plus rapide']]}
+};
+
+function table(mode){
+ let h='<div class="tw"><table><thead><tr><th>ID contrepartie</th><th>Raison sociale</th><th>Segment</th><th>Chiffre d’affaires</th><th>Note N-1</th><th>Note interne</th><th>Probabilité de défaut</th><th>Modèle</th><th>Date notation</th><th>Note appli. source</th>'+(mode==='ai'?'<th>Résultat de l’analyse</th>':'')+'</tr></thead><tbody>';
+ rows.forEach(r=>{
+  let cls='',res='<span class="pill p-gr">OK</span>',hl=[],attrs='';
+  if(mode==='ai'&&r.a){const x=RES[r.a];cls=x.cls+' click';res=x.pill;hl=x.hl;attrs=` tabindex="0" data-a="${r.a}" data-id="${r.id}" aria-label="Ouvrir la carte de l'anomalie ${r.id}"`;}
+  const c=k=>hl.includes(k)?' class="hl"':'';
+  const date=r.date||'<span class="empty">(vide)</span>';
+  h+=`<tr class="${cls}"${attrs}><td class="mono">${r.id}</td><td>${r.nom}</td><td${c('seg')}>${r.seg}</td><td${c('ca')}>${r.ca}</td><td>${r.n1}</td><td${c('note')}>${r.note}</td><td${c('pd')}>${r.pd}</td><td${c('mod')}>${r.mod}</td><td${c('date')}>${date}</td><td${c('src')}>${r.src}</td>${mode==='ai'?'<td>'+res+'</td>':''}</tr>`;
+ });
+ return h+'</tbody></table></div><p class="note">Extrait de 10 lignes sur 12 480 – arrêté du 30/09/2026 – données fictives.</p>';
+}
+
+/* ---------- Fenêtres (carte d'anomalie / rapport des anomalies) ---------- */
+let lastFocus=null,wasAuto=false;
+function openModal(html,silent){
+ modal.innerHTML=html;ov.classList.add('open');lastFocus=document.activeElement;
+ if(!silent){wasAuto=auto&&!paused;if(wasAuto)pauseAuto(true);}
+ setTimeout(()=>modal.querySelectorAll('[data-w]').forEach(b=>b.style.width=b.dataset.w+'%'),80);
+ document.getElementById('mClose').addEventListener('click',closeModal);
+ document.getElementById('mClose').focus();
+}
+function closeModal(){ov.classList.remove('open');modal.innerHTML='';if(lastFocus&&lastFocus.isConnected)lastFocus.focus();if(wasAuto){wasAuto=false;pauseAuto(false);}}
+ov.addEventListener('click',e=>{if(e.target===ov)closeModal();});
+
+function openDetail(a,id,silent){
+ const d=DET[a],r=rows.find(x=>x.id===id);
+ const causes=d.causes.map((c,i)=>`<div>${i===0?'<b>':''}${i+1}. ${c[0]}${i===0?'</b>':''}</div><div class="conf"><div class="bar${i?' low':''}"><div data-w="${c[1]}"${d.fp&&!i?' style="background:var(--orange)"':''}></div></div><b>${c[1]} %</b></div>`).join('');
+ const html=`${silent?'<div class="autotag">EXEMPLE OUVERT AUTOMATIQUEMENT · lecture auto</div>':''}
+ <div class="mhead"><div><h3 id="mTitle">Alerte ${id} – ${r.nom}</h3>
+  <span class="pill ${d.sevc}">${d.fp?'':'Sévérité : '}${d.sev}</span> <span class="pill p-vi">Analyse IA</span> <span class="pill p-grey">${d.famille}</span></div>
+  <button type="button" class="x" id="mClose" aria-label="Fermer">✕</button></div>
+  <div class="alert ${d.fp?'or':a==='date'?'ye':''}"><div class="t">${d.titre}</div><div class="m">${d.constat}</div></div>
+  <div class="grid2"><div>
+   <div class="box"><h4>🔍 Éléments relevés par l’IA</h4><ul class="evid">${d.preuves.map(p=>'<li>'+p+'</li>').join('')}</ul></div>
+   <div class="aibox"><div class="who">✨ EXPLICATION GÉNÉRÉE PAR L’IA</div>${d.ia}</div>
+  </div><div>
+   <div class="box"><h4>${d.fp?'🎯 Qualification et niveau de confiance':'🎯 Cause racine probable et niveau de confiance'}</h4>${causes}</div>
+  </div></div>
+  <div class="box"><h4>🛠️ ${d.fp?'Action proposée':'Pistes de remédiation proposées'}</h4>
+   ${d.rem.map((x,i)=>`<div class="rem"><div class="n">${i+1}</div><div class="d"><b>${x[0]}</b><div class="meta">👥 ${x[1]} · ${x[2]}</div>
+   <div class="actions"><button type="button" class="mini vbtn">Valider</button><button type="button" class="mini">Modifier</button><button type="button" class="mini rbtn">Rejeter</button></div></div></div>`).join('')}
+  </div>
+  <p class="note">Le collaborateur garde la main : chaque proposition de l’IA est validée, modifiée ou rejetée. Un ticket de correction pré-rempli est généré après validation.</p>`;
+ openModal(html,silent);
+ modal.querySelectorAll('.vbtn').forEach(b=>b.addEventListener('click',()=>{b.classList.add('ok');b.textContent='✔ Validé';}));
+ modal.querySelectorAll('.rbtn').forEach(b=>b.addEventListener('click',()=>{b.classList.add('ko');b.textContent='✕ Rejeté';}));
+ if(silent){
+  later(()=>{const b=modal.querySelector('.vbtn');if(b){b.classList.add('ok');b.textContent='✔ Validé';}},14000);
+ }
+}
+
+function openDash(){
+ const types=[['Contrôles de base',31,'#d4a200'],['Profils similaires',17,'var(--violet)'],['Évolution dans le temps',14,'var(--violet)'],['Rapprochement inter-applicatif',9,'var(--violet)'],['Cohérence entre champs',6,'var(--violet)']];
+ const causes=[['Modèle de probabilité de défaut obsolète (CORP-v2)',24],['Extraction incomplète des dates de notation',18],['Table de correspondance des notes erronée',9],['Segment non revu après croissance',8],['Saisies manuelles erronées',7]];
+ const dims=[['Complétude','99,9 %','p-gr','Bon'],['Conformité de format','99,9 %','p-gr','Bon'],['Cohérence entre champs','99,7 %','p-or','À surveiller'],['Concordance inter-applicative','99,9 %','p-or','À surveiller'],['Stabilité dans le temps','99,8 %','p-gr','Bon']];
+ openModal(`<div class="mhead"><div><h3 id="mTitle">📊 Rapport des anomalies – arrêté du 30/09/2026</h3><span class="sub">notation_contreparties_20260930.csv · 12 480 contreparties analysées</span></div>
+ <button type="button" class="x" id="mClose" aria-label="Fermer">✕</button></div>
+ <div class="kpis">
+  <div class="kpi"><div class="l">Contreparties analysées</div><div class="v">12 480</div></div>
+  <div class="kpi"><div class="l">Alertes</div><div class="v" style="color:var(--red)">77</div><div class="d">dont 46 détectées par l’IA</div></div>
+  <div class="kpi"><div class="l">Sévérité élevée</div><div class="v" style="color:var(--red)">33</div><div class="d">Moyenne 26 · faible 18</div></div>
+  <div class="kpi"><div class="l">Faux positifs pré-qualifiés</div><div class="v" style="color:var(--orange)">11</div><div class="d">Clôture proposée</div></div>
+  <div class="kpi"><div class="l">Causes racines identifiées</div><div class="v">5</div><div class="d">Expliquent 66 alertes</div></div>
+  <div class="kpi"><div class="l">Confiance moyenne</div><div class="v">84 %</div><div class="d">sur la cause principale</div></div>
+ </div>
+ <div class="grid2" style="margin-top:14px">
+  <div class="box"><h4>📊 Alertes par type</h4>${types.map(t=>`<div class="hb"><span>${t[0]}</span><div class="track"><div data-w="${t[1]/31*100}" style="background:${t[2]}"></div></div><b>${t[1]}</b></div>`).join('')}</div>
+  <div class="box"><h4>🎯 Principales causes racines</h4>${causes.map(c=>`<div class="hb"><span>${c[0]}</span><div class="track"><div data-w="${c[1]/24*100}" style="background:var(--blue)"></div></div><b>${c[1]}</b></div>`).join('')}</div>
+ </div>
+ <div class="grid2">
+  <div class="box"><h4>🧭 Qualité par dimension</h4>
+   <div class="gauge"><div class="ring" style="background:conic-gradient(var(--green) 0 92%,#e9edf3 92% 100%)"><div><b>92</b><small>/ 100</small></div></div>
+   <div class="dim" style="flex:1">${dims.map(d=>`<span>${d[0]}</span><b>${d[1]}</b><span class="pill ${d[2]}">${d[3]}</span>`).join('')}</div></div>
+   <p class="note" style="margin-top:8px">Score de qualité global : 92/100 (−3 points par rapport à l’arrêté précédent).</p></div>
+  <div class="box"><h4>💡 Lecture de l’IA</h4>
+   <div class="insight"><span>🔴</span><span><b>Priorité 1</b> : 24 contreparties Corporate ont une probabilité de défaut calculée avec un modèle désactivé. Une seule correction à la source les traite toutes.</span></div>
+   <div class="insight"><span>🔴</span><span><b>Risque fort</b> : 9 contreparties apparaissent à tort en défaut à cause d’une table de correspondance des notes, avec un impact direct sur les calculs de risque.</span></div>
+   <div class="insight"><span>🟠</span><span>La cohérence entre champs se dégrade depuis juillet 2026, en lien avec le changement de modèle Corporate.</span></div>
+   <div class="insight"><span>🟢</span><span>La complétude et le format sont stables : les 18 dates manquantes viennent d’un seul lot d’extraction.</span></div>
+  </div>
+ </div>`,false);
+}
+dashBtn.addEventListener('click',openDash);
+function setDash(on){dashBtn.disabled=!on;dashBtn.title=on?'Ouvrir le rapport des anomalies':'Disponible après l’analyse';}
+
+/* ---------- Étapes ---------- */
+const steps=[
+{short:'Contexte',tag:'ÉTAPE 1 · CONTEXTE',title:'Aujourd’hui : des contrôles simples et beaucoup d’analyse manuelle',
+ body:`<p>Le collaborateur contrôle la qualité des données de <b>notation des risques</b> : notes internes, probabilités de défaut, segments, modèles.</p>
+ <p>Les contrôles actuels vérifient la <b>présence</b>, le <b>format</b> et la <b>validité</b> des champs. Ils ne voient pas les incohérences <b>entre</b> les données ou <b>entre</b> applications.</p>
+ <div class="key">Enjeu : détecter les anomalies complexes et accélérer leur traitement grâce à l’IA.</div>`,
+ dur:13000,
+ render(){stage.innerHTML=`<div class="fade"><h3>Qualité des données de notation : la situation actuelle</h3><p class="sub">Avant l’apport de l’IA</p>
+ <div class="cards">
+  <div class="card hidden c1"><div class="lbl">Contrôles en place</div><div class="big" style="font-size:20px">Présence · Format · Validité</div></div>
+  <div class="card hidden c2"><div class="lbl">Anomalies complexes détectées</div><div class="big" style="color:var(--red)">Peu ou pas</div><div class="lbl">Incohérences entre champs ou applications non couvertes</div></div>
+  <div class="card hidden c3"><div class="lbl">Analyse d’une anomalie</div><div class="big">≈ 45 min</div><div class="lbl">Recherche manuelle de la cause (hypothèse)</div></div>
+  <div class="card hidden c4"><div class="lbl">Faux positifs</div><div class="big">Non qualifiés</div><div class="lbl">Chaque alerte est analysée une à une</div></div>
+ </div>
+ <div class="box hidden c5" style="margin-top:16px"><h4>Ce que va montrer le démonstrateur</h4>
+ <div class="cards"><div><span class="pill p-bl">1</span> Import des données</div><div><span class="pill p-bl">2</span> Analyse automatique : contrôles de base et détection IA</div><div><span class="pill p-bl">3</span> Alertes cliquables : cause racine, niveau de confiance, remédiation</div><div><span class="pill p-bl">4</span> Rapport des anomalies et gains de temps</div></div></div></div>`;
+ ['.c1','.c2','.c3','.c4','.c5'].forEach((s,i)=>reveal(s,500+i*1300));}
+},
+{short:'Import',tag:'ÉTAPE 2 · IMPORT',title:'Le collaborateur importe les données à analyser',
+ body:`<p>Le collaborateur dépose l’extraction de l’applicatif de notation (arrêté du 30/09/2026), soit <b>12 480 contreparties</b>.</p>
+ <p>L’outil vérifie la structure du fichier puis le charge.</p>
+ <div class="key">Aucune règle à écrire : il suffit d’importer le fichier.</div>`,
+ dur:14000,
+ render(){stage.innerHTML=`<div class="fade"><h3>Importer un jeu de données</h3><p class="sub">Formats acceptés : CSV, XLSX, extraction de table</p>
+ <div class="drop" id="drop"><div class="cursor" id="cur">🖱️</div>
+  <div class="file hidden" id="file"><div class="ic">CSV</div><div style="text-align:left"><b>notation_contreparties_20260930.csv</b><div style="color:var(--grey);font-size:12px">12 480 lignes · 10 colonnes · 3,2 Mo</div></div></div>
+  <p id="dropTxt" style="color:var(--grey);margin-top:12px">Glissez-déposez votre fichier ici</p></div>
+ <div class="box hidden" id="up" style="margin-top:14px"><h4>Chargement et vérification de la structure</h4>
+  <div class="bar"><div id="upb"></div></div><p id="upTxt" class="sub" style="margin-top:8px">Chargement…</p></div>
+ <div class="cards hidden" id="meta">
+  <div class="card"><div class="lbl">Lignes</div><div class="big">12 480</div></div>
+  <div class="card"><div class="lbl">Colonnes reconnues</div><div class="big">10 / 10</div></div>
+  <div class="card"><div class="lbl">Historique N-1 rattaché</div><div class="big">Oui</div></div>
+  <div class="card"><div class="lbl">Source de rapprochement</div><div class="big" style="font-size:18px">Application de notation amont</div></div>
+ </div></div>`;
+ const cur=document.getElementById('cur');
+ later(()=>{cur.style.transform='translate(0,10px) scale(1.2)';document.getElementById('drop').classList.add('active');},1200);
+ later(()=>{document.getElementById('file').classList.add('show');document.getElementById('dropTxt').textContent='Fichier déposé ✔';cur.style.display='none';},3000);
+ later(()=>{document.getElementById('up').classList.add('show');},4500);
+ later(()=>{document.getElementById('upb').style.width='100%';},5000);
+ later(()=>{document.getElementById('upTxt').innerHTML='<span class="pill p-gr">✔ Fichier chargé et structure validée</span>';},8000);
+ later(()=>{document.getElementById('meta').classList.add('show');},9000);}
+},
+{short:'Aperçu',tag:'ÉTAPE 3 · DONNÉES',title:'Aperçu des données importées',
+ body:`<p>Voici un extrait des données : segment, chiffre d’affaires, note N-1, note interne, probabilité de défaut, modèle de notation et note de l’application source.</p>
+ <p>Hormis une date manquante, <b>rien ne saute aux yeux</b> : les champs sont remplis et au bon format.</p>
+ <div class="key">Les anomalies complexes sont cachées dans les combinaisons de valeurs.</div>`,
+ dur:13000,
+ render(){stage.innerHTML=`<div class="fade"><h3>Aperçu – notation_contreparties_20260930.csv</h3><p class="sub">Données fictives de notation des risques</p>${table('raw')}</div>`;}
+},
+{short:'Analyse',tag:'ÉTAPE 4 · ANALYSE',title:'L’outil analyse automatiquement les données',
+ body:`<p>En une seule analyse, l’outil combine :</p>
+ <p>1. les <b>contrôles de base</b> (présence, format, validité), qui reprennent les contrôles existants ;</p>
+ <p>2. la <b>détection IA d’anomalies complexes</b> : cohérence entre champs, évolution dans le temps, rapprochement entre applications et comparaison avec des profils similaires.</p>
+ <div class="key">Les contrôles de base trouvent 31 anomalies, l’IA en trouve 46 de plus, qu’ils ne voient pas.</div>
+ <p style="margin-top:10px">📊 À la fin de l’analyse, le <b>rapport des anomalies</b> devient disponible via le bouton jaune en haut à droite.</p>`,
+ dur:20000,
+ render(){
+ setDash(false);
+ const base=[['Présence des champs obligatoires','18 anomalies'],['Format (dates, montants, codes)','9 anomalies'],['Valeurs autorisées (échelle de notes, segments)','4 anomalies']];
+ const ai=[['🔗 Cohérence entre champs','La note interne est-elle cohérente avec la probabilité de défaut et le modèle utilisé ?','6 anomalies'],
+ ['📈 Évolution dans le temps','Une note chute-t-elle de plusieurs crans sans événement de crédit ?','14 anomalies'],
+ ['🔄 Rapprochement inter-applicatif','La note diffère-t-elle de celle de l’application source ?','9 anomalies'],
+ ['👥 Comparaison avec des profils similaires','Une contrepartie classée PME ressemble-t-elle à un grand groupe ?','17 anomalies']];
+ stage.innerHTML=`<div class="fade"><h3>Analyse en cours</h3><p class="sub">12 480 contreparties analysées</p>
+ <div class="sec">1 · Contrôles de base</div>
+ <div class="mods">${base.map((x,i)=>`<div class="mod hidden b${i}"><h4>${x[0]}</h4><div class="bar"><div class="bb${i}"></div></div><div class="st bt${i}" style="color:var(--grey)">En cours…</div></div>`).join('')}</div>
+ <div class="sec">2 · Détection IA d’anomalies complexes</div>
+ <div class="mods">${ai.map((x,i)=>`<div class="mod ai hidden a${i}"><h4>${x[0]}</h4><p>${x[1]}</p><div class="bar"><div class="ab${i}" style="background:var(--violet)"></div></div><div class="st at${i}" style="color:var(--grey)">En attente…</div></div>`).join('')}</div>
+ <div class="cards hidden ar" style="margin-top:16px">
+  <div class="card"><div class="lbl">Anomalies de base</div><div class="big">31</div></div>
+  <div class="card" style="border-color:var(--violet)"><div class="lbl">Anomalies complexes (IA)</div><div class="big" style="color:var(--violet)">+46</div></div>
+  <div class="card" style="border-color:var(--red)"><div class="lbl">Total des alertes</div><div class="big" style="color:var(--red)">77</div></div>
+  <div class="card"><div class="lbl">Durée de l’analyse</div><div class="big">2 min 40</div></div></div></div>`;
+ base.forEach((x,i)=>{later(()=>{stage.querySelector('.b'+i).classList.add('show');stage.querySelector('.bb'+i).style.width='100%';},500+i*1000);
+  later(()=>{stage.querySelector('.bt'+i).innerHTML='<span class="pill p-ye">⚠ '+x[1]+'</span>';},3000+i*1000);});
+ ai.forEach((x,i)=>{later(()=>{stage.querySelector('.a'+i).classList.add('show');stage.querySelector('.at'+i).textContent='Analyse…';stage.querySelector('.ab'+i).style.width='100%';},6000+i*1900);
+  later(()=>{stage.querySelector('.at'+i).innerHTML='<span class="pill p-red">⚠ '+x[2]+'</span>';},8600+i*1900);});
+ reveal('.ar',16000);
+ later(()=>{setDash(true);dashBtn.classList.remove('pulse');void dashBtn.offsetWidth;dashBtn.classList.add('pulse');},16500);}
+},
+{short:'Alertes',tag:'ÉTAPE 5 · ALERTES',title:'Les anomalies sont signalées : cliquez sur une ligne pour ouvrir sa carte',
+ body:`<p>Dans l’extrait, l’outil signale <b>4 anomalies complexes</b> (en rouge), <b>1 faux positif probable</b> (en orange) et <b>1 anomalie de base</b> (en jaune).</p>
+ <p><b>👉 Cliquez sur une ligne signalée</b> pour ouvrir sa carte : constat, éléments relevés par l’IA, <b>cause racine probable avec son niveau de confiance</b>, explication en langage clair et <b>pistes de remédiation</b> à valider.</p>
+ <p>Pour un faux positif (ligne orange), l’IA propose de clôturer l’alerte et fournit la justification.</p>
+ <p>📊 Le <b>rapport des anomalies</b> (en haut à droite) donne la vue d’ensemble du jeu de données.</p>
+ <div class="key">Les anomalies en rouge passaient tous les contrôles classiques.</div>`,
+ dur:34000,
+ render(){stage.innerHTML=`<div class="fade"><h3>Résultats de l’analyse</h3>
+ <p class="sub"><span class="pill p-red">4 anomalies complexes</span> <span class="pill p-or">1 faux positif probable</span> <span class="pill p-ye">1 anomalie de base</span> <span class="pill p-gr">4 conformes</span></p>
+ <div class="hint">👆 Cliquez sur une ligne colorée pour ouvrir la carte de l’anomalie</div>
+ ${table('ai')}</div>`;
+ stage.querySelectorAll('tr.click').forEach(tr=>{
+  tr.addEventListener('click',()=>openDetail(tr.dataset.a,tr.dataset.id,false));
+  tr.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openDetail(tr.dataset.a,tr.dataset.id,false);}});
+ });
+ later(()=>stage.querySelectorAll('tr.click').forEach(t=>t.classList.add('pulse')),2500);
+ later(()=>{if(auto&&!paused&&!ov.classList.contains('open'))openDetail('pd','CPT-10233',true);},8000);}
+},
+{short:'Gains',tag:'ÉTAPE 6 · GAINS',title:'Hypothèses de gains de temps',
+ body:`<p>Sur un arrêté de 12 480 contreparties et 77 alertes, le temps de traitement passe de <b>≈ 43 h à ≈ 8,5 h</b>.</p>
+ <p>Le gain vient de trois leviers : la <b>détection automatique</b>, le <b>regroupement par cause racine</b> et la <b>qualification des faux positifs</b>.</p>
+ <div class="key">Ce sont des hypothèses : le POC permettra de les mesurer sur données réelles.</div>`,
+ dur:18000,
+ render(){stage.innerHTML=`<div class="fade"><h3>Hypothèses de gains de temps (par arrêté)</h3><p class="sub">Base : 77 alertes, dont 31 anomalies de base, 35 anomalies complexes et 11 faux positifs</p>
+ <div class="gain hidden g1">
+  <div class="h">Activité</div><div class="h">Sans IA</div><div class="h">Avec IA</div><div class="h">Gain</div>
+  <div>Détection des anomalies complexes</div><div>Non couvert ou revue manuelle ≈ 4 h</div><div>Automatique (≈ 3 min)</div><div class="g">≈ -100 %</div>
+  <div>Analyse des anomalies de base (31)</div><div>15 min × 31 ≈ 7,75 h</div><div>3 min × 31 ≈ 1,5 h</div><div class="g">≈ -80 %</div>
+  <div>Recherche de cause racine (35 anomalies complexes)</div><div>45 min × 35 ≈ 26 h</div><div>10 min × 35 ≈ 6 h</div><div class="g">≈ -78 %</div>
+  <div>Qualification des faux positifs (11)</div><div>25 min × 11 ≈ 4,5 h</div><div>5 min × 11 ≈ 1 h</div><div class="g">≈ -80 %</div>
+  <div>Rédaction des demandes de correction</div><div>≈ 1 h</div><div>≈ 15 min (pré-rempli)</div><div class="g">≈ -75 %</div>
+  <div><b>Total</b></div><div><b>≈ 43 h</b></div><div><b>≈ 8,5 h</b></div><div class="g">≈ -80 %</div>
+ </div>
+ <div class="box hidden g2" style="margin-top:16px"><h4>Temps de traitement d’un arrêté</h4>
+  <div class="barcmp"><span>Sans IA</span><div class="track"><div class="gb1" style="background:#9aa5b4">≈ 43 h</div></div></div>
+  <div class="barcmp"><span>Avec IA</span><div class="track"><div class="gb2" style="background:var(--green)">≈ 8,5 h</div></div></div></div>
+ <div class="cards hidden g3">
+  <div class="card"><div class="lbl">Anomalies complexes détectées en plus</div><div class="big">46</div></div>
+  <div class="card"><div class="lbl">Alertes regroupées en</div><div class="big">5 causes</div></div>
+  <div class="card"><div class="lbl">Temps libéré par arrêté</div><div class="big" style="color:var(--green)">≈ 34 h</div></div></div>
+ <p class="note">Hypothèses illustratives, établies à partir de temps unitaires moyens supposés. Elles seront mesurées et ajustées pendant le POC.</p></div>`;
+ reveal('.g1',800);reveal('.g2',6000);
+ later(()=>{stage.querySelector('.gb1').style.width='100%';stage.querySelector('.gb2').style.width='20%';},6600);
+ reveal('.g3',10500);}
+}
+];
+
+/* ---------- Navigation ---------- */
+let cur=0,auto=false,paused=false,autoTimer=null,fillTimer=null,stepStart=0,elapsed=0;
+const dots=document.getElementById('dots');
+steps.forEach((s,i)=>{const b=document.createElement('button');b.type='button';b.className='dot';b.innerHTML=`${i+1}. ${s.short}<span class="fill"></span>`;b.addEventListener('click',()=>go(i));dots.appendChild(b);});
+const bPrev=document.getElementById('bPrev'),bNext=document.getElementById('bNext'),bPause=document.getElementById('bPause');
+
+function flash(){comment.classList.remove('flash','hold');void comment.offsetWidth;comment.classList.add('flash');
+ timers.push(setTimeout(()=>{comment.classList.remove('flash');comment.classList.add('hold');},4500));}
+
+function go(i){
+ if(ov.classList.contains('open')){ov.classList.remove('open');modal.innerHTML='';wasAuto=false;}
+ cur=Math.max(0,Math.min(steps.length-1,i));
+ clearTimers();clearTimeout(autoTimer);clearInterval(fillTimer);elapsed=0;
+ const s=steps[cur];
+ document.getElementById('cTag').textContent=s.tag;
+ document.getElementById('cTitle').textContent=s.title;
+ document.getElementById('cBody').innerHTML=s.body;
+ setDash(cur>=4);
+ flash();s.render();
+ [...dots.children].forEach((d,k)=>{d.className='dot'+(k<cur?' done':'')+(k===cur?' cur':'');d.querySelector('.fill').style.width=k<cur?'100%':'0';});
+ document.getElementById('stepLabel').textContent=`Étape ${cur+1} / ${steps.length}`;
+ bPrev.disabled=cur===0;bNext.disabled=cur===steps.length-1;
+ window.scrollTo({top:0,behavior:'smooth'});
+ if(auto&&!paused)schedule();
+}
+function schedule(){
+ const s=steps[cur];stepStart=Date.now()-elapsed;
+ const fill=dots.children[cur].querySelector('.fill');
+ fillTimer=setInterval(()=>{fill.style.width=Math.min(100,(Date.now()-stepStart)/s.dur*100)+'%';},200);
+ autoTimer=setTimeout(()=>{clearInterval(fillTimer);if(cur<steps.length-1)go(cur+1);else{if(ov.classList.contains('open'))closeModal();setMode(false);}},Math.max(0,s.dur-elapsed));
+}
+function pauseAuto(p){
+ if(!auto)return;
+ paused=p;bPause.textContent=p?'▶ Reprendre':'⏸ Pause';
+ if(p){elapsed=Date.now()-stepStart;clearTimeout(autoTimer);clearInterval(fillTimer);}
+ else schedule();
+}
+function setMode(a){
+ auto=a;paused=false;elapsed=0;
+ document.getElementById('mAuto').classList.toggle('on',a);document.getElementById('mStep').classList.toggle('on',!a);
+ bPause.style.display=a?'':'none';bPause.textContent='⏸ Pause';
+ clearTimeout(autoTimer);clearInterval(fillTimer);
+ if(a){go(cur===steps.length-1?0:cur);}
+ else dots.children[cur].querySelector('.fill').style.width='0';
+}
+document.getElementById('mAuto').addEventListener('click',()=>setMode(true));
+document.getElementById('mStep').addEventListener('click',()=>setMode(false));
+bPause.addEventListener('click',()=>pauseAuto(!paused));
+bNext.addEventListener('click',()=>go(cur+1));
+bPrev.addEventListener('click',()=>go(cur-1));
+document.getElementById('bRestart').addEventListener('click',()=>go(0));
+document.addEventListener('keydown',e=>{
+ if(ov.classList.contains('open')){if(e.key==='Escape')closeModal();return;}
+ if(e.target.tagName==='TR')return;
+ if(e.key==='ArrowRight')go(cur+1);if(e.key==='ArrowLeft')go(cur-1);});
+go(0);
+})();
+</script>
+</body>
+</html>
